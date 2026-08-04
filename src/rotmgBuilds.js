@@ -34,7 +34,7 @@ class RotmgBuilds {
             const items = this.traverseHtml(html);
             this.masterList = items;
         } finally {
-            await browser.close()
+            await browser.close();
         }
     }
 

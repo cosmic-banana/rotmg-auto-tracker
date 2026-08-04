@@ -7,6 +7,12 @@ Keep it running on the machine that also runs RotMG.exe and it will listen to th
 ### Prerequisites
 It runs on Windows and requires Wireshark installed in the default installation path.
 
+### Setup
+1. Create a file called config.json that matches the format of `config.template.json`
+2. > npm install
+3. > npx playwright install
+4. > node src/app.js
+
 ### Upcoming features
 - Ability to open app while in-game and track items without loading into a new map.
 - Automatic tracking of dungeon completes count.
