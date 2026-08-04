@@ -59,7 +59,16 @@ class RotmgBuilds {
         let collections = await this.getCollections();
         const collection = collections.find(e => e.name === config.collectionName);
         
-        if (!("rarities" in collection)) { collection["rarities"] = {}; } //older collections may not have this attribute
+        try {
+            if (!("rarities" in collection)) { collection["rarities"] = {}; } //older collections may not have this attribute
+        } catch(e) {
+            if (e instanceof TypeError) { //app crashed from collection undefined. debug why.
+                console.log("debug collections:");
+                console.log("looking for cname: " + config.collectionName);
+                console.log(collections);
+                throw e;
+            }
+        }
 
         let currentRarity = collection.rarities[itemName];
         if (!currentRarity) currentRarity = 0;

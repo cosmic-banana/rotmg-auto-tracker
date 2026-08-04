@@ -8,7 +8,7 @@ class App {
         const ws = new WikiScraper();
         const rb = new RotmgBuilds();
         const trackedItemsPromise = rb.setAllTrackedItems();
-        const gameUpdateExists = true;
+        const gameUpdateExists = false;
 
         if (gameUpdateExists) {
             await Promise.all([
