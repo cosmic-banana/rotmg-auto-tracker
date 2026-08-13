@@ -36,26 +36,25 @@ class TcpReassembler {
             this.gapped = false;
             Debug.tcpReassemblerLog(`===== [TCP RECOVERY] seq=${packet.seq} expected=${this.seq} len=${packet.payload.length} timestamp=${Date.now()%100000} =====`);
         }
-        try {
-            this.rotmgPacketParser.feed(packet.payload);
-        } catch (e) {
-            console.error(e);
-            console.error(`Error occurred in stream ${packet.stream}`);
-        }
+        this.feedPacket(packet.payload, packet.stream);
         this.seq += packet.payload.length;
 
         //Flush any buffered contiguous packets
         while (this.pending.has(this.seq)) {
             const payload = this.pending.get(this.seq);
             this.pending.delete(this.seq);
-            try {
-                this.rotmgPacketParser.feed(payload);
-            } catch (e) {
-                console.error(e);
-                console.error(`Error occurred in stream ${packet.stream}`);
-            }
+            this.feedPacket(payload, packet.stream);
             Debug.tcpReassemblerLog(`===== [TCP FLUSH] seq=${this.seq} len=${payload.length} timestamp=${Date.now()%100000}`);
             this.seq += payload.length;
+        }
+    }
+
+    feedPacket(payload, stream) {
+        try {
+            this.rotmgPacketParser.feed(payload);
+        } catch (e) {
+            console.error(e);
+            console.error(`Error occurred in stream ${stream}`);
         }
     }
 
