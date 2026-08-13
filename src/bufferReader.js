@@ -38,6 +38,9 @@ class BufferReader {
 
     readString() {
         const len = this.readShort();
+        if (len > this.buffer.length - this.offset || len < 0)
+            throw new Error("Nonsense string parsed");
+
         const str = this.buffer.toString(
             "utf8",
             this.offset,
@@ -49,11 +52,15 @@ class BufferReader {
 
     readCompressedInt() {
         let byte = this.readByte();
-        const negative = (byte & 64) !== 0; //sign, only first byte
+        const negative = (byte & 64) !== 0; //sign bit (01000000), only first byte
         let value = byte & 63;
         let shift = 6;
+        let bytesRead = 1;
 
-        while ((byte & 128) !== 0) { //continuation bit
+        while ((byte & 128) !== 0) { //continuation bit (10000000)
+            if (bytesRead++ >= 5) {
+                throw new Error("Too big int parsed");
+            }
             byte = this.readByte();
             value |= (byte & 127) << shift;
             shift += 7;
@@ -64,6 +71,10 @@ class BufferReader {
 
     remaining() {
         return this.buffer.length - this.offset;
+    }
+
+    inspect(bytes) {
+        return this.buffer.subarray(this.offset, this.offset+bytes);
     }
 }
 

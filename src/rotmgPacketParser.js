@@ -27,11 +27,12 @@ class RotmgPacketParser {
             const packet = this.buffer.subarray(0, packetLength); //Complete packet
             this.buffer = this.buffer.subarray(packetLength); //Remove it from the receive buffer
             var decrypted = this.in.decrypt(packet.subarray(5));
+         
             try {
                 this.packetEvent(packet.readUInt8(4), decrypted);
-            } catch (e) { //Will likely occur if stream desyncs for any reason. Could then recover on reload or crash from buffer overflow.
-                if (e instanceof RangeError)
-                    console.error("[RangeError] len: " + packet.readUInt32BE(0) + ", " + packet.subarray(0,5).toString("hex") + " | " + decrypted.toString("hex"));
+            } catch (e) { //Will likely occur if stream desyncs for any reason. Could then recover on reload or crash from buffer overflow. Caught here for logging decrypted bytes.
+                console.error(`[ERROR] len=${packetLength} headers=${packet.subarray(0,5).toString("hex")} decrypted_bytes=${decrypted.toString("hex")}`);
+                throw e;
             }
         }
     }

@@ -1,5 +1,6 @@
 const { execFileSync, spawn } = require("child_process");
 const TcpReassembler = require("./tcpReassembler");
+const Debug = require("./debug");
 const fs = require("fs");
 const os = require("os");
 
@@ -70,7 +71,7 @@ class Listener {
             for (const [stream, c] of this.tcpReassemblers) {
                 if (now - c.lastActivity > 90000) { //set high to avoid killing active connection when idling in-game
                     this.tcpReassemblers.delete(stream);
-                    console.log(`Deleted old connection: ${stream}`); //dev logging
+                    Debug.listenerLog(`Deleted old connection: ${stream}`);
                     continue;
                 }
             }
@@ -106,9 +107,8 @@ class Listener {
     handleTcpSegment(tcpSegment) {
         if (!this.tcpReassemblers.has(tcpSegment.stream)) { //New connection detected
             const session = this.app.newConnection();
-            console.log(`=====================New Stream [${tcpSegment.stream}]======================`); //dev logging
+            Debug.listenerLog(`New Stream [${tcpSegment.stream}], ISN [${tcpSegment.seq}], ${tcpSegment.payload.subarray(0,9).toString("hex")}`);
             this.tcpReassemblers.set(tcpSegment.stream, new TcpReassembler(tcpSegment.seq, session.handlePacket.bind(session)));
-            //issue when tabbed out and lastActivity might not update?
         }
         this.tcpReassemblers.get(tcpSegment.stream).addPacket(tcpSegment);
     }

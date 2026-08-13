@@ -2,3 +2,4 @@ config.json
 game_items.json
 node_modules/
 issue_tracking
+player_object_analysis.js

@@ -1,4 +1,5 @@
 const fs = require("fs");
+const Debug = require("./debug");
 
 class WikiScraper {
 
@@ -28,7 +29,7 @@ class WikiScraper {
         [5346, "UT. Green Beehemoth Quiver"]
     ]
 
-    static superItemExceptions = [ //Extra exceptional items that will be inserted directly into completionTrackedItems
+    static superItemExceptions = [ //Extra exceptional items that will be inserted directly into wikiItems
         [65531, "shiny_Kendo_Stick"],
         [32667, "Red_Nosed"], 
         [30365, "Red_Nosed"], //duplicate entry because of mapping ambiguity
@@ -40,19 +41,19 @@ class WikiScraper {
         [2224, "Killer_Bee_Pet_Skin"]
     ]
 
-    completionTrackedItems = {} //does not fully exclude untracked items, as some sneak in during scraping
+    wikiItems = {} //does not fully exclude untracked items, as some sneak in during scraping
     
     loadItems() {
-        this.completionTrackedItems = JSON.parse(fs.readFileSync("game_items.json", "utf8"));
+        this.wikiItems = JSON.parse(fs.readFileSync("game_items.json", "utf8"));
     }
 
     saveItems() {
-        fs.writeFileSync("game_items.json", JSON.stringify(this.completionTrackedItems, null, 2));
+        fs.writeFileSync("game_items.json", JSON.stringify(this.wikiItems, null, 2));
     }
 
     //compares scraped data against what's on disc, intended to catch silently added items like Minotaur Mace
     newItemsSinceLastUpdate() {
-        console.log("feature not implemented");
+        Debug.startupLog("feature not implemented");
     }
 
     errorCorrectSkins(unrecognizedItems) {
@@ -62,33 +63,33 @@ class WikiScraper {
             const splitItem = item.split("_");
             splitItem.splice(splitItem.length-2, 1);
             const searchTerm = splitItem.join("_");
-            for (const [id, name] of Object.entries(this.completionTrackedItems)) {
+            for (const [id, name] of Object.entries(this.wikiItems)) {
                 if (name.startsWith(searchTerm)) {
-                    this.completionTrackedItems[id] = item;
-                    console.log(`Replaced ${searchTerm} with ${item}`);
+                    this.wikiItems[id] = item;
+                    Debug.startupLog(`Replaced ${searchTerm} with ${item}`);
                 }
             }
         }
     }
 
-    async setCompletionTrackedItems() {
-        let completionTrackedItems = {};
+    async setWikiItems() {
+        let wikiItems = {};
         
         const scrapedItems = await this.scrape();
         for (const item of scrapedItems) {
-            this.updateItemList(item[0], item[1], item[2], completionTrackedItems);
+            this.updateItemList(item[0], item[1], item[2], wikiItems);
         }
 
         const e = WikiScraper.itemExceptions;
         for (let i=0; i<e.length; i++) {
-            this.updateItemList(e[i][0], e[i][1], e.length-i <= 4, completionTrackedItems);
+            this.updateItemList(e[i][0], e[i][1], e.length-i <= 4, wikiItems);
         }
 
         for (const item of WikiScraper.superItemExceptions) {
-            completionTrackedItems[item[0]] = item[1];
+            wikiItems[item[0]] = item[1];
         }
 
-        this.completionTrackedItems = completionTrackedItems;
+        this.wikiItems = wikiItems;
     }
 
     async fetchPage(url) {
@@ -174,10 +175,10 @@ class WikiScraper {
         const overlaps = [...keyMap.entries()]
             .filter(([_, fileList]) => fileList.length > 1);
 
-        console.log(`Found ${overlaps.length} overlapping keys:`);
+        Debug.dev(`Found ${overlaps.length} overlapping keys:`);
 
         for (const [key, fileList] of overlaps) {
-            console.log(`${key}: ${fileList.join(", ")}`);
+            Debug.dev(`${key}: ${fileList.join(", ")}`);
         }
     }
 }

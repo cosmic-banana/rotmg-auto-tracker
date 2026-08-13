@@ -1,28 +1,33 @@
 const { chromium } = require("playwright");
 const config = require("../config.json");
+const Debug = require("./debug");
 
 class RotmgBuilds {
 
     static URL_HOME = "https://www.rotmg-builds.com/"
-    masterList;
+    masterlistItems; //all items listed on rotmg-builds.com
+
+    constructor() {
+        this.logQueue = Promise.resolve(); //does this need http error handling?
+    }
 
     //Intended to do a diff check and error correction against realm.wiki-scraped data
-    getUnrecognizedItems(gameItems) {
-        const gameItemsByName = {};
-        for (const [id, name] of Object.entries(gameItems)) { //reverse lookup once
-            gameItemsByName[name] = id;
+    getUnrecognizedItems(wikiItems) {
+        const wikiItemsByName = {};
+        for (const [id, name] of Object.entries(wikiItems)) { //reverse lookup once
+            wikiItemsByName[name] = id;
         }
 
         let unrecognized = [];
-        for (const name of this.masterList) {
-            if (!gameItemsByName[name])
+        for (const name of this.masterlistItems) {
+            if (!wikiItemsByName[name])
                 unrecognized.push(name);
         }
 
         return unrecognized;
     }
     
-    async setAllTrackedItems() {
+    async setMasterlistItems() {
         let browser;
         try {
             browser = await chromium.launch();
@@ -32,7 +37,7 @@ class RotmgBuilds {
             
             const html = await page.content();
             const items = this.traverseHtml(html);
-            this.masterList = items;
+            this.masterlistItems = items;
         } finally {
             await browser.close();
         }
@@ -55,29 +60,28 @@ class RotmgBuilds {
         return itemNames;
     } 
 
-    async logItem(itemName, rarity) {
-        let collections = await this.getCollections();
-        const collection = collections.find(e => e.name === config.collectionName);
-        
-        try {
-            if (!("rarities" in collection)) { collection["rarities"] = {}; } //older collections may not have this attribute
-        } catch(e) {
-            if (e instanceof TypeError) { //app crashed from collection undefined. debug why.
-                console.log("debug collections:");
-                console.log("looking for cname: " + config.collectionName);
-                console.log(collections);
-                throw e;
+    logItem(itemName, rarity) {
+        Debug.rotmgBuildsLog(`Queued for logging: ${itemName}`);
+        this.logQueue = this.logQueue.then(async () => {
+            let collections = await this.getCollections();
+            const collection = collections.find(e => e.name === config.collectionName);
+            if (collection === undefined) {
+                console.error(`Unknown collection name: ${config.collectionName} - can't log item`);
+                return;
             }
-        }
-
-        let currentRarity = collection.rarities[itemName];
-        if (!currentRarity) currentRarity = 0;
-        let currentCount = collection.counts[itemName];
-        if (!currentCount) currentCount = 0;
-
-        collection.counts[itemName] = currentCount+1;
-        collection.rarities[itemName] = Math.max(rarity, currentRarity);
-        this.saveCollections(collections);
+            
+            if (!("rarities" in collection)) { collection["rarities"] = {}; } //older collections may not have this attribute
+    
+            let currentRarity = collection.rarities[itemName];
+            if (!currentRarity) currentRarity = 0;
+            let currentCount = collection.counts[itemName];
+            if (!currentCount) currentCount = 0;
+    
+            collection.counts[itemName] = currentCount+1;
+            collection.rarities[itemName] = Math.max(rarity, currentRarity);
+            await this.saveCollections(collections);
+            console.log(`Added to collection: ${itemName} ${rarity}s`);
+        });
     }
 
     async makeRequest(endpoint, body) {

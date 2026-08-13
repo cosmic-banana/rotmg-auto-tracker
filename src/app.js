@@ -2,30 +2,33 @@ const Listener = require("./listener");
 const WikiScraper = require("./wikiScraper");
 const Session = require("./session");
 const RotmgBuilds = require("./rotmgBuilds");
+const Debug = require("./debug");
 
 class App {
     async start() {
         const ws = new WikiScraper();
         const rb = new RotmgBuilds();
-        const trackedItemsPromise = rb.setAllTrackedItems();
-        const gameUpdateExists = false;
+        const masterlistItemsPromise = rb.setMasterlistItems();
+        rb.login();
+        const gameUpdateExists = true;
 
         if (gameUpdateExists) {
             await Promise.all([
-                ws.setCompletionTrackedItems(),
-                trackedItemsPromise
+                ws.setWikiItems(),
+                masterlistItemsPromise
             ]);
-            ws.newItemsSinceLastUpdate();
-            const unrecognizedItems = rb.getUnrecognizedItems(ws.completionTrackedItems, rb.masterList);
-            ws.errorCorrectSkins(unrecognizedItems);
-            console.log("Unrecognized items from Rotmg-builds.com:")
-            console.log(rb.getUnrecognizedItems(ws.completionTrackedItems, rb.masterList));
+            ws.errorCorrectSkins(rb.getUnrecognizedItems(ws.wikiItems));
+            if (Debug.config.startup.enabled) {
+                ws.newItemsSinceLastUpdate();
+                Debug.startupLog("Unrecognized items from Rotmg-builds.com:");
+                Debug.startupLog(rb.getUnrecognizedItems(ws.wikiItems));
+            }
             ws.saveItems();
         } else {
             ws.loadItems();
+            await masterlistItemsPromise; //Each session needs access to this, so wait
         }
 
-        await rb.login();
         this.rotmgBuilds = rb;
         this.wikiScraper = ws;
         new Listener(this).start();

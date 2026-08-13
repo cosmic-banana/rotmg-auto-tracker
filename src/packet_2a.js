@@ -1,5 +1,5 @@
 const BufferReader = require("./bufferReader");
-const Util = require("./Util");
+const Debug = require("./debug");
 
 //Server update packet
 class Packet_2A {
@@ -11,7 +11,7 @@ class Packet_2A {
     objectData = []
     outOfViewData = []
 
-    static stringTypes = [31,38,54,62,71,72,80,82,115,121,127,128,147,155]
+    static stringTypes = [6,31,38,54,62,71,72,80,82,115,121,127,128,147,155]
     static lootBags = [
         1289,1725, //teal bags
         1294,1724, //yellow bags
@@ -27,37 +27,48 @@ class Packet_2A {
         this.playerY = br.readFloat();
         this.mysteryByte = br.readByte();
 
+        Debug.packet2ALog(`buffer length: ${br.buffer.length}`);
+        Debug.packet2ALog(`Player X: ${this.playerX}`);
+        Debug.packet2ALog(`Player Y: ${this.playerY}`);
+        Debug.packet2ALog(`Mystery Byte: ${this.mysteryByte}`);
+
         const tileDataLength = br.readCompressedInt();
+        Debug.packet2ALog(`tileDataLength: ${tileDataLength}`);
         for (let i=0; i<tileDataLength; i++) {
             this.tileData.push({
                 x: br.readShort(),
                 y: br.readShort(),
                 type: br.readUShort()
             })
+            Debug.packet2AObject(i, this.tileData[i]);
         }
 
         const objectDataLength = br.readCompressedInt();
+        Debug.packet2ALog(`objectDataLength: ${objectDataLength}`);
         for (let i=0; i<objectDataLength; i++) {
             const objectType = br.readUShort();
             const objectId = br.readCompressedInt();
             const x = br.readFloat();    
             const y = br.readFloat();
-            const stats = []
+            const stats = [];
             const statLength = br.readCompressedInt();
             for (let j=0; j<statLength; j++) {
-                const statType = br.readByte()
+                const statType = br.readByte();
                 stats.push({
                     statType,
                     value1: Packet_2A.stringTypes.includes(statType) ? br.readString() : br.readCompressedInt(),
                     value2: br.readCompressedInt()
-                })
+                });
             }
-            this.objectData.push({objectType, objectId, x, y, stats})
+            this.objectData.push({objectType, objectId, x, y, stats});
+            Debug.packet2AObject(i, this.objectData[i]);
         }
 
         const outOfViewDataLength = br.readCompressedInt();
+        Debug.packet2ALog(`outOfViewDataLength: ${outOfViewDataLength}`);
         for (let i=0; i<outOfViewDataLength; i++) {
-            this.outOfViewData.push(br.readCompressedInt())
+            this.outOfViewData.push(br.readCompressedInt());
+            Debug.packet2AObject(i, this.outOfViewData[i]);
         }
     }
 
@@ -68,12 +79,12 @@ class Packet_2A {
     getLootBagContentsById(objectId) {
         var loot = [];
         var lootbag = this.objectData.find(e => e.objectId === objectId) 
-        const enchantmentsArray = lootbag.stats.find((e) => e["statType"] === 80)["value1"].split(",");
+        const enchantmentsStat = lootbag.stats.find((e) => e["statType"] === 80);
         for (const stat of lootbag.stats) {
             if (stat["statType"] >= 8 &&
                     stat["statType"] <= 15 &&
                     stat["value1"] != -1) {
-                loot.push([stat["value1"], enchantmentsArray[stat["statType"]-8]])
+                loot.push([stat["value1"], (enchantmentsStat === undefined) ? "" : enchantmentsStat["value1"].split(",")[stat["statType"]-8]])
             }
         }
         return loot;

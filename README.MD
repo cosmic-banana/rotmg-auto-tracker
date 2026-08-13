@@ -16,8 +16,10 @@ It runs on Windows and requires Wireshark installed in the default installation 
 ### Upcoming features
 - Ability to open app while in-game and track items without loading into a new map.
 - Automatic tracking of dungeon completes count.
+- GUI with collection log selection and more.
+- Auto detection of game updates
 - (Possibly) Track damage dealt for own character only.
-- (Possibly) Easy-access display for daily quests
+- (Possibly) Easy-access display for daily quests.
 - (Possibly) System notification for subscription-based events, such as biome white bags or specific dungeon modifiers.
 
 ### Notes
