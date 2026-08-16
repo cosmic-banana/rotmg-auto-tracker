@@ -1,4 +1,4 @@
-const BufferReader = require("./bufferReader");
+const BufferReader = require("./networking/bufferReader");
 const Debug = require("./debug");
 
 //Server update packet

@@ -1,5 +1,5 @@
 const RotmgPacketParser = require("./rotmgPacketParser");
-const Debug = require("./debug");
+const Debug = require("../debug");
 
 
 class TcpReassembler {

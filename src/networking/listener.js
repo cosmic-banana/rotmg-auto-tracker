@@ -1,6 +1,6 @@
 const { execFileSync, spawn } = require("child_process");
 const TcpReassembler = require("./tcpReassembler");
-const Debug = require("./debug");
+const Debug = require("../debug");
 const fs = require("fs");
 const os = require("os");
 

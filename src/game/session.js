@@ -1,6 +1,6 @@
-const Util = require("./util");
-const Packet_2A = require("./packet_2a");
-const Debug = require("./debug");
+const Util = require("../util");
+const Packet_2A = require("../packet_2a");
+const Debug = require("../debug");
 
 /**
  * Each map change opens a new connection, represented by this class

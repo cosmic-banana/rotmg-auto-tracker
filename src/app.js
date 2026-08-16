@@ -1,6 +1,6 @@
-const Listener = require("./listener");
+const Listener = require("./networking/listener");
 const WikiScraper = require("./wikiScraper");
-const Session = require("./session");
+const Session = require("./game/session");
 const RotmgBuilds = require("./rotmgBuilds");
 const Debug = require("./debug");
 
