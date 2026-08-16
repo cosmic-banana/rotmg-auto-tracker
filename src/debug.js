@@ -30,6 +30,13 @@ class Debug {
     static tcpReassemblerLog(msg) {
         if (Debug.config.tcpReassembler.enabled) console.log(msg);
     }
+    static gapped = false;
+    static tcpGapCheck(gapped, msg) {
+        if (Debug.gapped !== gapped) {
+            Debug.gapped = gapped;
+            Debug.tcpReassemblerLog(msg);
+        }    
+    }
     static rotmgBuildsLog(msg) {
         if (Debug.config.rotmgBuilds.enabled) console.log(msg);
     }
