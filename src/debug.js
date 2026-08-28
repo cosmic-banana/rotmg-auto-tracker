@@ -11,7 +11,7 @@ class Debug {
             enabled: false
         },
         tcpReassembler: {
-            enabled: false
+            enabled: true
         },
         session: {
             enabled: false

@@ -33,6 +33,7 @@ class Packet_2A {
         Debug.packet2ALog(`Mystery Byte: ${this.mysteryByte}`);
 
         const tileDataLength = br.readCompressedInt();
+        if (tileDataLength < 0 || tileDataLength > 200000) throw new Error('Invalid tileDataLength');
         Debug.packet2ALog(`tileDataLength: ${tileDataLength}`);
         for (let i=0; i<tileDataLength; i++) {
             this.tileData.push({
@@ -44,6 +45,7 @@ class Packet_2A {
         }
 
         const objectDataLength = br.readCompressedInt();
+        if (objectDataLength < 0 || objectDataLength > 100000) throw new Error('Invalid objectDataLength');
         Debug.packet2ALog(`objectDataLength: ${objectDataLength}`);
         for (let i=0; i<objectDataLength; i++) {
             const objectType = br.readUShort();
@@ -52,6 +54,7 @@ class Packet_2A {
             const y = br.readFloat();
             const stats = [];
             const statLength = br.readCompressedInt();
+            if (statLength < 0 || statLength > 2000) throw new Error('Invalid statLength');
             for (let j=0; j<statLength; j++) {
                 const statType = br.readByte();
                 stats.push({
@@ -65,6 +68,7 @@ class Packet_2A {
         }
 
         const outOfViewDataLength = br.readCompressedInt();
+        if (outOfViewDataLength < 0 || outOfViewDataLength > 200000) throw new Error('Invalid outOfViewDataLength');
         Debug.packet2ALog(`outOfViewDataLength: ${outOfViewDataLength}`);
         for (let i=0; i<outOfViewDataLength; i++) {
             this.outOfViewData.push(br.readCompressedInt());
@@ -78,7 +82,8 @@ class Packet_2A {
 
     getLootBagContentsById(objectId) {
         var loot = [];
-        var lootbag = this.objectData.find(e => e.objectId === objectId) 
+        var lootbag = this.objectData.find(e => e.objectId === objectId)
+        if (!lootbag || !lootbag.stats) return loot;
         const enchantmentsStat = lootbag.stats.find((e) => e["statType"] === 80);
         for (const stat of lootbag.stats) {
             if (stat["statType"] >= 8 &&

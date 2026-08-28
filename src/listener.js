@@ -10,6 +10,8 @@ class Listener {
 
     constructor(app) {
         this.app = app;
+        this.partial = "";
+        this.tshark = null;
     }
 
     findTshark() {
@@ -52,7 +54,7 @@ class Listener {
     }
 
     start() {
-        const tshark = spawn(this.findTshark(), [
+        this.tshark = spawn(this.findTshark(), [
             "-i", this.findInterfaceNumber().toString(),
             "-f", "tcp src port 2050", //only server messages for now
             "-T", "fields",
@@ -61,8 +63,8 @@ class Listener {
             "-e", "tcp.payload"
         ]);
 
-        tshark.stdout.setEncoding("utf8");
-        tshark.stdout.on("data", data => {
+        this.tshark.stdout.setEncoding("utf8");
+        this.tshark.stdout.on("data", data => {
             this.handleStdoutChunk(data);
         });
 
@@ -77,13 +79,21 @@ class Listener {
             }
         }, 30000)
 
-        tshark.stderr.on("data", data => {
+        this.tshark.stderr.on("data", data => {
             console.error("[tshark]", data.toString().trim());
         });
 
-        tshark.on("close", code => {
+        this.tshark.on("close", code => {
             console.log("tshark exited with code", code);
+            this.tshark = null;
         });
+    }
+
+    stop() {
+        if (this.tshark) {
+            try { this.tshark.kill(); } catch (e) { /* ignore */ }
+            this.tshark = null;
+        }
     }
 
     handleStdoutChunk(chunk) {
