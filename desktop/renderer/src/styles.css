@@ -1,0 +1,19 @@
+:root{
+  --bg: #0f1720;
+  --card: #0b1220;
+  --muted: #9aa4b2;
+  --accent: #60a5fa;
+  --text: #e6eef6;
+}
+body { margin:0; font-family: Inter, system-ui, Arial; background: var(--bg); color:var(--text)}
+.app { padding: 18px }
+.header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px }
+.btn { padding:8px 14px; border-radius:6px; border:none; cursor:pointer }
+.btn.start { background:var(--accent); color:#06263b }
+.btn.stop { background:#ef4444; color:white }
+.panel { background:var(--card); padding:12px; border-radius:8px }
+.packets { max-height:60vh; overflow:auto }
+.packet { border-bottom:1px solid rgba(255,255,255,0.03); padding:8px }
+.meta { font-size:13px; color:var(--muted) }
+.empty { color:var(--muted); padding:12px }
+pre { margin:8px 0 0 0; white-space:pre-wrap; color:#cfe9ff }
