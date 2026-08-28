@@ -32,6 +32,46 @@ const sendToHelper = (msg) => {
   }
 }
 
+function postJson(pathSuffix, body, token) {
+  const data = JSON.stringify(body)
+  const url = new URL(`https://www.rotmg-builds.com${pathSuffix}`)
+  const options = {
+    method: 'POST',
+    hostname: url.hostname,
+    path: url.pathname,
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(data)
+    }
+  }
+  if (token) options.headers.Authorization = `Bearer ${token}`
+
+  return new Promise((resolve, reject) => {
+    const request = https.request(options, response => {
+      let responseBody = ''
+      response.setEncoding('utf8')
+      response.on('data', chunk => responseBody += chunk)
+      response.on('end', () => {
+        try { resolve(JSON.parse(responseBody)) } catch (error) { reject(error) }
+      })
+    })
+    request.on('error', reject)
+    request.write(data)
+    request.end()
+  })
+}
+
+async function getAccountCollections(username, password) {
+  const loginResponse = await postJson('/api/login', { username, password })
+  if (!loginResponse || !loginResponse.token) throw new Error('login failed')
+  const response = await postJson(
+    '/api/getCollections',
+    { username, token: loginResponse.token },
+    loginResponse.token
+  )
+  return response && Array.isArray(response.collections) ? response.collections : []
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1000,
@@ -91,7 +131,7 @@ ipcMain.handle('tracker:start', async (event) => {
   try {
     const cfgPath = path.resolve(__dirname, '..', '..', 'config.json')
     const cfg = require(cfgPath)
-    if (!cfg.username || !cfg.collectionName) return { status: 'error', error: 'Username and collectionName must be set in settings' }
+    if (!cfg.username || !cfg.collectionName) return { status: 'error', error: 'Select a collection before starting' }
     // ensure password is available in keytar (or at least present)
     let password = ''
     try {
@@ -99,6 +139,10 @@ ipcMain.handle('tracker:start', async (event) => {
       if (keytar && cfg.username) password = await keytar.getPassword('rotmg-auto-tracker', cfg.username) || ''
     } catch (e) { /* ignore */ }
     if (!password) return { status: 'error', error: 'Password not found. Save credentials in settings.' }
+    const collections = await getAccountCollections(cfg.username, password)
+    if (!collections.some(collection => collection && collection.name === cfg.collectionName)) {
+      return { status: 'error', error: 'Selected collection is not valid for this account.' }
+    }
   } catch (e) {
     return { status: 'error', error: 'Config missing or unreadable; please configure logging and credentials.' }
   }

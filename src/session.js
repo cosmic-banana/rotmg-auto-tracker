@@ -50,18 +50,12 @@ class Session {
                     let itemName = loot[i][0]
                     const rarity = loot[i][1]
 
-                    // If item is a numeric ID that we cannot resolve to a wiki name, skip it.
-                    const isNumericOrig = !isNaN(itemName)
-                    if (isNumericOrig && (!this.wikiItems || !this.wikiItems[String(itemName)])) {
-                        Debug.sessionLog(`Unresolved numeric item id skipped: ${itemName}`)
+                    if (/^\d+$/.test(String(itemName).trim())) {
+                        Debug.sessionLog(`Numeric item name skipped: ${itemName}`)
                         continue
                     }
 
-                    // canonicalize numeric ids to names where possible so dedupe works across both forms
                     let canonical = String(itemName)
-                    if (isNumericOrig && this.wikiItems && this.wikiItems[String(itemName)]) {
-                        canonical = this.wikiItems[String(itemName)]
-                    }
 
                     const inMasterStatic = (canonical in this.masterItems)
                     const inMasterDynamic = Array.isArray(this.app.rotmgBuilds.masterlistItems) && this.app.rotmgBuilds.masterlistItems.includes(canonical)

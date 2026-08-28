@@ -99,6 +99,12 @@ async function handleLogin(cmd) {
 
 async function handleLog(cmd) {
   if (!state.token || !state.username || !state.collectionName) throw new Error('not logged in')
+  const mappedItemName = mapIdToName(cmd.itemName)
+  if (/^\d+$/.test(String(mappedItemName).trim())) {
+    emitDebug({ level: 'info', event: 'numericItemSkipped', item: mappedItemName })
+    return { ok: true, skipped: true }
+  }
+
   // fetch collections, update and save
   const colsResp = await postJson('/api/getCollections', { username: state.username, token: state.token }, state.token)
   const collections = colsResp.collections || []
@@ -127,8 +133,7 @@ async function handleLog(cmd) {
     // non-fatal: if normalization fails, leave as-is
   }
 
-  const { itemName, rarity } = cmd
-  const mappedItemName = mapIdToName(itemName)
+  const { rarity } = cmd
   const currentRarity = collection.rarities[mappedItemName] || 0
   const currentCount = collection.counts[mappedItemName] || 0
   collection.counts[mappedItemName] = currentCount + 1

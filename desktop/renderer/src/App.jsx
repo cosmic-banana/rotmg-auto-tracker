@@ -31,12 +31,12 @@ function getItemRarity(base64) {
 export default function App() {
   const [running, setRunning] = useState(false)
   const [packets, setPackets] = useState([])
-  const [showSettings, setShowSettings] = useState(false)
+  const [showSettings, setShowSettings] = useState(true)
   const [config, setConfig] = useState({ username: '', password: '', collectionName: '' })
-  const [saving, setSaving] = useState(false)
+  const [collections, setCollections] = useState([])
+  const [authenticated, setAuthenticated] = useState(false)
   const [saveStatus, setSaveStatus] = useState(null)
   const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState(null)
   const [loggingReady, setLoggingReady] = useState(false)
   const [helperStatus, setHelperStatus] = useState({ state: 'stopped', detail: null })
   const unsubscribeRef = useRef(null)
@@ -50,7 +50,9 @@ export default function App() {
     // load config
     if (window.configAPI && window.configAPI.get) {
       window.configAPI.get().then(res => {
-        if (res && res.ok && res.config) setConfig(res.config)
+        if (res && res.ok && res.config) {
+          setConfig({ ...res.config, collectionName: '' })
+        }
       })
     }
 
@@ -98,7 +100,11 @@ export default function App() {
   const start = async () => {
     if (!window.trackerAPI) return
     // Prevent starting unless credentials present
-    if (!config.username || !config.collectionName || !config.password) {
+    if (!config.collectionName) {
+      setSaveStatus('need_collection')
+      return
+    }
+    if (!config.username || !config.password) {
       setSaveStatus('need_logging')
       return
     }
@@ -121,36 +127,49 @@ export default function App() {
     unsubscribeRef.current = null
   }
 
-  const saveConfig = async () => {
-    if (!window.configAPI || !window.configAPI.set) return
-    setSaving(true)
-    setSaveStatus(null)
-    const res = await window.configAPI.set(config)
-    setSaving(false)
-    if (res && res.ok) setSaveStatus('saved')
-    else setSaveStatus('error')
-  }
-
-  const testLogin = async () => {
+  const login = async () => {
     if (!window.configAPI || !window.configAPI.testLogin) return
     setSaveStatus(null)
-    setTestResult(null)
     setTesting(true)
     try {
       const res = await window.configAPI.testLogin(config)
       setTesting(false)
       if (res && res.ok) {
         setSaveStatus('login_ok')
-        setTestResult({ ok: true, collections: res.collections || [], collectionFound: res.collectionFound })
+        setCollections(res.collections || [])
+        setAuthenticated(true)
+        setConfig(current => ({ ...current, collectionName: '' }))
       } else {
         setSaveStatus('login_error')
-        setTestResult({ ok: false, error: res && res.error ? res.error : 'unknown' })
       }
     } catch (e) {
       setTesting(false)
       setSaveStatus('login_error')
-      setTestResult({ ok: false, error: String(e) })
     }
+  }
+
+  if (!authenticated) {
+    return (
+      <div className="app">
+        <main>
+          <section className="panel">
+            <h1>rotmg-auto-tracker</h1>
+            <h2>Log in</h2>
+            <div style={{display:'grid', gridTemplateColumns:'160px 1fr', gap:8, alignItems:'center'}}>
+              <label>Username</label>
+              <input value={config.username} onChange={e => setConfig({...config, username: e.target.value})} disabled={testing} />
+              <label>Password</label>
+              <input type="password" value={config.password} onChange={e => setConfig({...config, password: e.target.value})} disabled={testing} />
+              <div />
+              <div>
+                <button className="btn start" onClick={login} disabled={testing || !config.username || !config.password}>{testing ? 'Logging in...' : 'Log In'}</button>
+                {saveStatus === 'login_error' && <span style={{color:'#f87171', marginLeft:8}}>Login failed</span>}
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    )
   }
 
   // Website logging is mandatory; no toggle provided in the UI.
@@ -172,7 +191,7 @@ export default function App() {
           {running ? (
             <button className="btn stop" onClick={stop}>Stop</button>
           ) : (
-            <button className="btn start" onClick={start} disabled={!config.username || !config.collectionName || !config.password}>Start</button>
+            <button className="btn start" onClick={start}>Start</button>
           )}
         </div>
       </header>
@@ -184,32 +203,29 @@ export default function App() {
             <div style={{padding:8, background:'#fff5f5', color:'#b91c1c', borderRadius:4, marginBottom:8}}>Settings are locked while the tracker is running.</div>
           )}
           <div style={{display:'grid', gridTemplateColumns:'160px 1fr', gap:8, alignItems:'center'}}>
-            <label>Username</label>
-            <input value={config.username} onChange={e => setConfig({...config, username: e.target.value})} disabled={running} />
-            <label>Password</label>
-            <input type="password" value={config.password} onChange={e => setConfig({...config, password: e.target.value})} disabled={running} />
             <label>Collection Name</label>
-            <input value={config.collectionName} onChange={e => setConfig({...config, collectionName: e.target.value})} disabled={running} />
+            <select value={config.collectionName} onChange={async e => {
+              const collectionName = e.target.value
+              setConfig(current => ({...current, collectionName}))
+              setSaveStatus(null)
+              const res = await window.configAPI.set({...config, collectionName})
+              if (!res || !res.ok) {
+                setConfig(current => ({...current, collectionName: ''}))
+                setSaveStatus('error')
+              }
+            }} disabled={running}>
+              <option value="">Select a collection</option>
+              {collections.map(collection => <option key={collection.name} value={collection.name}>{collection.name}</option>)}
+            </select>
+            {saveStatus === 'need_collection' && <div style={{gridColumn:'2', color:'#f97316'}}>Select a collection before starting.</div>}
             <div />
             <div style={{display:'flex', gap:8, alignItems:'center'}}>
-              <button className="btn start" onClick={saveConfig} disabled={saving || running}>{saving? 'Saving...' : 'Save'}</button>
-              <button className="btn" onClick={testLogin} disabled={testing || running}>{testing? 'Testing...' : 'Test Login'}</button>
               {/* Website logging is mandatory; no toggle shown. */}
               {loggingReady && <span style={{color:'#8bdc87'}}>Logging Ready</span>}
-              {saveStatus === 'saved' && <span style={{color:'#8bdc87'}}>Saved</span>}
               {saveStatus === 'error' && <span style={{color:'#f87171'}}>Error</span>}
               {saveStatus === 'login_ok' && <span style={{color:'#8bdc87'}}>Login OK</span>}
               {saveStatus === 'login_error' && <span style={{color:'#f87171'}}>Login Failed</span>}
             </div>
-            {testResult && (
-              <div style={{marginTop:8}}>
-                {testResult.ok ? (
-                  <div style={{color:'#8bdc87'}}>Login succeeded. Collections: {testResult.collections.map(c=>c.name).join(', ')}</div>
-                ) : (
-                  <div style={{color:'#f87171'}}>Login failed: {testResult.error}</div>
-                )}
-              </div>
-            )}
           </div>
         </section>
       )}
@@ -235,8 +251,7 @@ export default function App() {
                             const id = it && it[0]
                             const raw = it && it[1]
                             const name = (id !== undefined && gameItems && gameItems[String(id)]) ? gameItems[String(id)] : String(id)
-                            // Filter noise: unmapped numeric id with empty raw is likely not an item
-                            if ((String(name).match(/^\d+$/) !== null) && (!raw || raw === '')) return null
+                            if (/^\d+$/.test(String(name).trim())) return null
                             // Deduplicate by name within this packet
                             if (seen.has(name)) return null
                             seen.add(name)
