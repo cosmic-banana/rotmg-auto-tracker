@@ -35,6 +35,7 @@ export default function App() {
   const [config, setConfig] = useState({ username: '', password: '', collectionName: '' })
   const [collections, setCollections] = useState([])
   const [authenticated, setAuthenticated] = useState(false)
+  const [showAbout, setShowAbout] = useState(false)
   const [saveStatus, setSaveStatus] = useState(null)
   const [testing, setTesting] = useState(false)
   const [loggingReady, setLoggingReady] = useState(false)
@@ -148,6 +149,22 @@ export default function App() {
     }
   }
 
+  const aboutModal = showAbout ? (
+    <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:10}} onClick={() => setShowAbout(false)}>
+      <section className="panel" role="dialog" aria-modal="true" aria-labelledby="about-title" onClick={e => e.stopPropagation()} style={{maxWidth:420, margin:16}}>
+        <h2 id="about-title">About rotmg-auto-tracker</h2>
+        <p>rotmg-auto-tracker is a dedicated tool for rotmg-builds.com that automatically tracks eligible RotMG loot and logs it to your selected collection.</p>
+        <p>Per DECA's recent blog post, <a href="https://hub.realmofthemadgod.com/news0/news1/guardians" target="_blank" rel="noopener noreferrer">sniffers do not violate the terms of service</a>. Therefore, this app is completely legal to use.</p>
+        <p>To use this app, simply run it BEFORE launching realm, log in with your rotmg-builds.com credentials, and select your collection. Then press start, and launch realm. The app will automatically track your loot!</p>
+        <p><b>Important:</b> This app requires you to have a rotmg-builds.com account and a created collection to store your tracked loot.</p>
+        <p>If you do not have a rotmg-builds.com account, you can create one at <a href="https://rotmg-builds.com/pages/login.html" target="_blank" rel="noopener noreferrer">rotmg-builds.com</a>.</p>
+        <p>Once you've created an account, create a new collection in browser to store your tracked loot. Once the collection is created, you can start tracking your loot!</p>
+        <p>Version 0.1.0</p>
+        <button className="btn" onClick={() => setShowAbout(false)}>Close</button>
+      </section>
+    </div>
+  ) : null
+
   if (!authenticated) {
     return (
       <div className="app">
@@ -163,11 +180,13 @@ export default function App() {
               <div />
               <div>
                 <button className="btn start" onClick={login} disabled={testing || !config.username || !config.password}>{testing ? 'Logging in...' : 'Log In'}</button>
+                <button className="btn" onClick={() => setShowAbout(true)} style={{marginLeft:8}}>About</button>
                 {saveStatus === 'login_error' && <span style={{color:'#f87171', marginLeft:8}}>Login failed</span>}
               </div>
             </div>
           </section>
         </main>
+        {aboutModal}
       </div>
     )
   }
@@ -179,8 +198,9 @@ export default function App() {
       <header className="header">
         <h1>rotmg-auto-tracker — Desktop</h1>
         <div style={{display:'flex', alignItems:'center', gap:12}}>
+          <button className="btn" onClick={() => setShowAbout(true)}>About</button>
           <div style={{fontSize:12}}>
-            Helper: {helperStatus.state === 'stopped' && <span style={{color:'#f97316'}}>stopped</span>}
+            Tracker: {helperStatus.state === 'stopped' && <span style={{color:'#f97316'}}>stopped</span>}
             {helperStatus.state === 'alive' && <span style={{color:'#60a5fa'}}>alive</span>}
             {helperStatus.state === 'logged-in' && <span style={{color:'#10b981'}}>logged in</span>}
             {helperStatus.state === 'login-failed' && <span style={{color:'#ef4444'}}>login failed</span>}
@@ -280,6 +300,8 @@ export default function App() {
         </section>
         {/* Helper debug panel removed */}
       </main>
+
+      {aboutModal}
     </div>
   )
 }
