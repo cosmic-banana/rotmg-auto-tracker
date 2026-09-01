@@ -235,13 +235,28 @@ ipcMain.handle('tracker:start', async (event) => {
       }
     }
 
-    // Load local wiki items (fast) using absolute path to avoid cwd issues
+    // Refresh the local wiki item map only when the cached data is stale; otherwise reuse the local JSON.
     try {
-      const gameItemsPath = path.resolve(__dirname, '..', '..', 'game_items.json')
-      const content = fs.readFileSync(gameItemsPath, 'utf8')
-      appLike.wikiScraper.wikiItems = JSON.parse(content)
+      const scraper = appLike.wikiScraper
+      const shouldRefresh = scraper.shouldRefreshWikiItems()
+      if (shouldRefresh) {
+        await scraper.setWikiItems()
+        scraper.saveItems()
+      } else {
+        const gameItemsPath = path.resolve(__dirname, '..', '..', 'game_items.json')
+        const content = fs.readFileSync(gameItemsPath, 'utf8')
+        scraper.wikiItems = JSON.parse(content)
+      }
+      appLike.wikiScraper.wikiItems = scraper.wikiItems
     } catch (e) {
-      console.warn('wiki load failed', e)
+      console.warn('wiki refresh failed, using cached game_items.json', e)
+      try {
+        const gameItemsPath = path.resolve(__dirname, '..', '..', 'game_items.json')
+        const content = fs.readFileSync(gameItemsPath, 'utf8')
+        appLike.wikiScraper.wikiItems = JSON.parse(content)
+      } catch (loadErr) {
+        console.warn('wiki load failed', loadErr)
+      }
     }
 
     listenerInstance = new Listener(appLike)

@@ -28,6 +28,33 @@ function getItemRarity(base64) {
   return getItemEnchantIds(base64).length
 }
 
+function getDisplayableItemRows(contents, gameItemsMap) {
+  if (!Array.isArray(contents)) return []
+
+  const seen = new Set()
+  const rows = []
+
+  contents.forEach((it, idx) => {
+    const id = it && it[0]
+    const raw = it && it[1]
+    const name = (id !== undefined && gameItemsMap && gameItemsMap[String(id)]) ? gameItemsMap[String(id)] : String(id)
+
+    if (/^\d+$/.test(String(name).trim())) return
+    if (seen.has(name)) return
+    seen.add(name)
+
+    rows.push({
+      idx,
+      slot: rows.length + 1,
+      name,
+      rarity: getItemRarity(raw),
+      raw: raw || ''
+    })
+  })
+
+  return rows
+}
+
 export default function App() {
   const [running, setRunning] = useState(false)
   const [packets, setPackets] = useState([])
@@ -254,48 +281,38 @@ export default function App() {
         <section className="panel">
           <h2>Live Packets</h2>
           <div className="packets">
-            {packets.length === 0 && <div className="empty">No packets yet — start the tracker.</div>}
-            {packets.map(p => (
-              <div key={p.id + (p.time||'')} className="packet">
-                <div className="meta">#{p.id} • {p.type} • {p.time ? new Date(p.time).toLocaleTimeString() : ''}</div>
-                <div>
-                  {Array.isArray(p.contents) && p.contents.length > 0 ? (
-                    <table style={{width:'100%', borderCollapse:'collapse'}}>
-                      <thead>
-                        <tr><th style={{textAlign:'left'}}>Slot</th><th style={{textAlign:'left'}}>Name</th><th style={{textAlign:'left'}}>Rarity</th><th style={{textAlign:'left'}}>Raw</th></tr>
-                      </thead>
-                      <tbody>
-                        {(() => {
-                          const seen = new Set()
-                          return p.contents.map((it, idx) => {
-                            const id = it && it[0]
-                            const raw = it && it[1]
-                            const name = (id !== undefined && gameItems && gameItems[String(id)]) ? gameItems[String(id)] : String(id)
-                            if (/^\d+$/.test(String(name).trim())) return null
-                            // Deduplicate by name within this packet
-                            if (seen.has(name)) return null
-                            seen.add(name)
-                          // compute rarity using the same logic as src/util.js
-                          const rarity = getItemRarity(raw)
-
-                          return (
-                            <tr key={idx} style={{borderTop:'1px solid #eee'}}>
-                              <td style={{padding:'6px'}}>{idx+1}</td>
-                              <td style={{padding:'6px'}}>{name}</td>
-                              <td style={{padding:'6px'}}>{rarity}</td>
-                              <td style={{padding:'6px', fontSize:12}}>{raw || ''}</td>
-                            </tr>
-                          )
-                          }).filter(Boolean)
-                        })()}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <pre>{JSON.stringify(p.contents || p.payload || {}, null, 2)}</pre>
-                  )}
-                </div>
-              </div>
-            ))}
+            {packets.length === 0 && <div className="empty">No packets yet — start the tracker and find some loot!</div>}
+            {packets
+              .filter(p => getDisplayableItemRows(p.contents, gameItems).length > 0)
+              .map(p => {
+                const rows = getDisplayableItemRows(p.contents, gameItems)
+                return (
+                  <div key={p.id + (p.time||'')} className="packet">
+                    <div className="meta">#{p.id} • {p.type} • {p.time ? new Date(p.time).toLocaleTimeString() : ''}</div>
+                    <div>
+                      {rows.length > 0 ? (
+                        <table style={{width:'100%', borderCollapse:'collapse'}}>
+                          <thead>
+                            <tr><th style={{textAlign:'left'}}>Slot</th><th style={{textAlign:'left'}}>Name</th><th style={{textAlign:'left'}}>Rarity</th><th style={{textAlign:'left'}}>Raw</th></tr>
+                          </thead>
+                          <tbody>
+                            {rows.map(row => (
+                              <tr key={`${p.id}-${row.idx}`} style={{borderTop:'1px solid #eee'}}>
+                                <td style={{padding:'6px'}}>{row.slot}</td>
+                                <td style={{padding:'6px'}}>{row.name}</td>
+                                <td style={{padding:'6px'}}>{row.rarity}</td>
+                                <td style={{padding:'6px', fontSize:12}}>{row.raw}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <pre>{JSON.stringify(p.contents || p.payload || {}, null, 2)}</pre>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
           </div>
         </section>
         {/* Helper debug panel removed */}

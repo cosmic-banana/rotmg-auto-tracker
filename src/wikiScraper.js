@@ -1,7 +1,16 @@
 const fs = require("fs");
+const path = require("path");
 const Debug = require("./debug");
 
 class WikiScraper {
+
+    static refreshIntervalMs = 1000 * 60 * 60 * 24; // 24 hours
+
+    static repoRoot = path.resolve(__dirname, "..");
+
+    static getDataFilePath(filename) {
+        return path.join(WikiScraper.repoRoot, filename);
+    }
 
     static itemExceptions = [ //items that are bad in the scraped dataset will be overriden from this list
         [4308, "UT. Yellow Beehemoth Armor"],
@@ -44,11 +53,46 @@ class WikiScraper {
     wikiItems = {} //does not fully exclude untracked items, as some sneak in during scraping
     
     loadItems() {
-        this.wikiItems = JSON.parse(fs.readFileSync("game_items.json", "utf8"));
+        this.wikiItems = JSON.parse(fs.readFileSync(WikiScraper.getDataFilePath("game_items.json"), "utf8"));
+    }
+
+    shouldRefreshWikiItems() {
+        const refreshFile = WikiScraper.getDataFilePath("game_items_last_refresh.json");
+        const refreshInfo = fs.existsSync(refreshFile)
+            ? JSON.parse(fs.readFileSync(refreshFile, "utf8"))
+            : {};
+        const lastRefresh = Number(refreshInfo.timestamp || 0);
+        return !lastRefresh || (Date.now() - lastRefresh) > WikiScraper.refreshIntervalMs;
+    }
+
+    markWikiRefresh() {
+        fs.writeFileSync(WikiScraper.getDataFilePath("game_items_last_refresh.json"), JSON.stringify({ timestamp: Date.now() }, null, 2));
     }
 
     saveItems() {
-        fs.writeFileSync("game_items.json", JSON.stringify(this.wikiItems, null, 2));
+        const previousItemsPath = WikiScraper.getDataFilePath("game_items.json");
+        const previousItems = fs.existsSync(previousItemsPath)
+            ? JSON.parse(fs.readFileSync(previousItemsPath, "utf8"))
+            : {};
+
+        const newItems = {};
+        for (const [id, name] of Object.entries(this.wikiItems)) {
+            if (!Object.prototype.hasOwnProperty.call(previousItems, id)) {
+                newItems[id] = name;
+            }
+        }
+
+        fs.writeFileSync(previousItemsPath, JSON.stringify(this.wikiItems, null, 2));
+        this.markWikiRefresh();
+
+        const diffLines = Object.entries(newItems)
+            .map(([id, name]) => `${id}: ${name}`);
+
+        const diffFilePath = WikiScraper.getDataFilePath("game_items_new_items.txt");
+        fs.writeFileSync(
+            diffFilePath,
+            diffLines.length > 0 ? `${diffLines.join("\n")}\n` : "No new items found.\n"
+        );
     }
 
     //compares scraped data against what's on disc, intended to catch silently added items like Minotaur Mace

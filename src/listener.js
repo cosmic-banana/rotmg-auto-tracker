@@ -14,6 +14,50 @@ class Listener {
         this.tshark = null;
     }
 
+    static parseDefaultRouteInterfaceAlias(output) {
+        const lines = output.split(/\r?\n/);
+
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith("InterfaceAlias") || trimmed.includes("----"))
+                continue;
+
+            const tokens = trimmed.split(/\s+/);
+            if (tokens.length >= 2 && tokens[0] && tokens[0] !== "IfIndex" && tokens[0] !== "DestinationPrefix") {
+                return tokens[0];
+            }
+        }
+
+        return null;
+    }
+
+    static pickFallbackInterfaceName(networkInterfaces = os.networkInterfaces()) {
+        return networkInterfaces.Ethernet ? "Ethernet" : "Wi-Fi";
+    }
+
+    findDefaultRouteInterfaceName() {
+        try {
+            const output = execFileSync(
+                "powershell.exe",
+                [
+                    "-NoProfile",
+                    "-Command",
+                    "Get-NetRoute -DestinationPrefix '0.0.0.0/0' | Sort-Object RouteMetric | Select-Object -First 1 -ExpandProperty InterfaceAlias"
+                ],
+                { encoding: "utf8" }
+            );
+
+            const interfaceAlias = output.trim();
+            if (interfaceAlias) {
+                return interfaceAlias;
+            }
+        } catch (error) {
+            Debug.listenerLog(`Could not resolve default route interface via PowerShell: ${error.message}`);
+        }
+
+        return Listener.pickFallbackInterfaceName();
+    }
+
     findTshark() {
         const tsharkCandidates = [
             "C:\\Program Files\\Wireshark\\tshark.exe",
@@ -29,7 +73,7 @@ class Listener {
     }
 
     findInterfaceNumber() {
-        var interfaceName = os.networkInterfaces()['Ethernet'] ? 'Ethernet' : 'Wi-Fi' //blind assumption that the correct interface is one of these and that ethernet > wifi
+        const interfaceName = this.findDefaultRouteInterfaceName();
 
         const output = execFileSync(
             this.findTshark(),
